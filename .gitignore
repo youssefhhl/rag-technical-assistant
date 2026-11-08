@@ -1,0 +1,50 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.python-version
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# --- Node / React ---
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+
+# --- Environment & secrets ---
+.env
+.env.*
+!.env.example
+*.key
+
+# --- Runtime data (raw/processed docs, uploads, BM25 index) ---
+data/raw/
+data/processed/
+data/pdf_uploads/
+data/indexes/
+!data/**/.gitkeep
+
+# --- Coverage / reports ---
+evaluation/reports/
+
+# --- OS & editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# --- Docker ---
+docker-compose.override.yml

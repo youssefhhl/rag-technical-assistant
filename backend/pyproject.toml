@@ -1,0 +1,42 @@
+[project]
+name = "smart-knowledge-assistant-backend"
+version = "0.1.0"
+description = "Backend for the Smart Knowledge Assistant RAG chatbot (FastAPI)."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "httpx>=0.28.1",
+    "beautifulsoup4>=4.15.0",
+    "langchain-core>=1.7.6",
+    "langchain-text-splitters>=1.1.3",
+    "sentence-transformers>=0.5.0",
+    "langchain-qdrant>=0.0.4",
+    "qdrant-client>=1.9.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27",
+    "pytest>=8.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+filterwarnings = [
+    # TestClient deprecation churn between httpx/starlette releases; revisit with next pin bump.
+    "ignore::DeprecationWarning",
+    "ignore:.*install .httpx2.*:Warning",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
