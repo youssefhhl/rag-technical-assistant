@@ -1,0 +1,14 @@
+# Qdrant Server (vector database) — HTTP API / Web UI on 6333, gRPC on 6334.
+# Usage: docker compose -f infrastructure/docker/docker-compose.yml up -d
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: skk-assistant-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      # Persistent storage in the NEW data/qdrant-server/ directory
+      # (relative to this compose file: repo root / data / qdrant-server).
+      - ../../data/qdrant-server:/qdrant/storage
+    restart: unless-stopped
