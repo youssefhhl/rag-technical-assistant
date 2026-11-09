@@ -24,6 +24,16 @@ dev = [
     "pytest>=8.3",
 ]
 
+[tool.uv.sources]
+# PyTorch CPU-only index: the default GPU build pulls ~3 GB of CUDA wheels;
+# the CPU wheel is ~150 MB and sentence-transformers works fine on CPU.
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
