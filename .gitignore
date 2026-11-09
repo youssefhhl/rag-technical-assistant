@@ -7,7 +7,6 @@ build/
 dist/
 .venv/
 venv/
-.python-version
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
@@ -29,11 +28,13 @@ yarn-error.log*
 !.env.example
 *.key
 
-# --- Runtime data (raw/processed docs, uploads, BM25 index) ---
+# --- Runtime data (raw/processed docs, uploads, Qdrant storage) ---
 data/raw/
 data/processed/
 data/pdf_uploads/
 data/indexes/
+data/qdrant/
+data/qdrant-server/
 !data/**/.gitkeep
 
 # --- Coverage / reports ---
