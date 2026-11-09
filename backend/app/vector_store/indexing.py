@@ -29,17 +29,15 @@ from app.core.config import Settings, get_settings
 logger = logging.getLogger(__name__)
 
 
-# -- loading -----------------------------------------------------------------
+# -- loading -------------------------------------------------------------------
 
 
 def chunks_path_for(source_name: str, settings: Settings | None = None) -> Path:
-    """Path of a source's chunks.jsonl file from Phase 2."""
     config = settings or get_settings()
     return config.data_dir / "processed" / source_name / "chunks.jsonl"
 
 
 def load_chunks(path: Path) -> list[Document]:
-    """Load a Phase 2 ``chunks.jsonl`` file into LangChain Documents."""
     documents: list[Document] = []
     with path.open("r", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, start=1):
@@ -58,7 +56,7 @@ def load_chunks(path: Path) -> list[Document]:
 
 
 def discover_sources(settings: Settings | None = None) -> list[str]:
-    """Sources that produced chunks in ``data/processed/`` (alphabetical)."""
+    """Sources with chunks.jsonl under ``data/processed/`` (alphabetical)."""
     config = settings or get_settings()
     base = config.data_dir / "processed"
     if not base.is_dir():
