@@ -35,7 +35,6 @@ def make_settings(tmp_path) -> Settings:
         _env_file=None,
         data_dir=tmp_path / "data",
         scrape_request_delay_seconds=0,
-        qdrant_local_path=tmp_path / "qdrant",
     )
 
 
@@ -81,18 +80,17 @@ def test_load_chunks_returns_documents_with_metadata(tmp_path):
 
 
 def test_load_chunks_skips_blank_lines_and_rejects_malformed_json(tmp_path):
-    write_chunks(tmp_path, "test", 1)
+    write_chunks(tmp_path, "test", 2)
     path = chunks_path_for("test", make_settings(tmp_path))
     with path.open("a", encoding="utf-8") as handle:
         handle.write("\n")
+        handle.write("\n")
+    assert len(load_chunks(path)) == 2  # blank lines skipped, clean records kept
+
+    with path.open("a", encoding="utf-8") as handle:
         handle.write("not json at all\n")
-        handle.write(json.dumps({"page_content": "missing metadata"}) + "\n")
-
-    documents = load_chunks(path)
-    assert len(documents) == 1  # blank line skipped
-
-    with pytest.raises(ValueError, match=r"test.jsonl:3"):
-        load_chunks(path)  # malformed line number is pinpointed (no silent loss)
+    with pytest.raises(ValueError, match=r"chunks\.jsonl:5"):
+        load_chunks(path)  # malformed line is pinpointed (no silent loss)
 
 
 def test_discover_sources_lists_only_processed_sources(tmp_path):

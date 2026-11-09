@@ -6,6 +6,7 @@ import qdrant_client.models as qdrant_models
 from app.core.config import Settings
 from app.embeddings.service import EMBEDDING_DIMENSION, EmbeddingService
 from app.vector_store.qdrant_service import ensure_collection, make_client
+from qdrant_client import QdrantClient
 
 
 class FakeQdrantClient:
@@ -23,7 +24,6 @@ class FakeQdrantClient:
 def make_settings(tmp_path, **overrides) -> Settings:
     values = {
         "data_dir": tmp_path / "data",
-        "qdrant_local_path": tmp_path / "qdrant",
         "scrape_request_delay_seconds": 0,
     }
     values.update(overrides)
@@ -53,17 +53,7 @@ def test_ensure_collection_parameterizes_dimension():
     assert client.created[0][1].size == 768
 
 
-def test_make_client_local_mode_writes_under_configured_path(tmp_path):
-    settings = make_settings(tmp_path)
-    client = make_client(settings)
-    try:
-        assert client.collection_exists("docs_chunks") in (True, False)
-        assert (settings.qdrant_local_path).is_dir()  # storage dir created
-    finally:
-        client.close()
-
-
-def test_make_client_uses_url_in_server_mode(tmp_path, monkeypatch):
+def test_make_client_connects_to_configured_server_url(tmp_path, monkeypatch):
     captured = {}
 
     class FakeServerClient(FakeQdrantClient):
@@ -74,11 +64,24 @@ def test_make_client_uses_url_in_server_mode(tmp_path, monkeypatch):
 
     monkeypatch.setattr("app.vector_store.qdrant_service.QdrantClient", FakeServerClient)
     settings = make_settings(
-        tmp_path, qdrant_mode="server", qdrant_url="http://localhost:9333", qdrant_api_key="secret"
+        tmp_path, qdrant_url="http://localhost:9333", qdrant_api_key="secret"
     )
     make_client(settings)
     assert captured["url"] == "http://localhost:9333"
     assert captured["api_key"] == "secret"
+
+
+def test_make_client_defaults_to_localhost_6333(tmp_path, monkeypatch):
+    captured = {}
+
+    class FakeServerClient(FakeQdrantClient):
+        def __init__(self, url=None, api_key=None, **kwargs):
+            captured["url"] = url
+            super().__init__()
+
+    monkeypatch.setattr("app.vector_store.qdrant_service.QdrantClient", FakeServerClient)
+    make_client(make_settings(tmp_path))
+    assert captured["url"] == "http://localhost:6333"
 
 
 def test_build_vector_store_wraps_service_and_ensures_collection(tmp_path, monkeypatch):
@@ -100,7 +103,47 @@ def test_build_vector_store_wraps_service_and_ensures_collection(tmp_path, monke
 
     assert isinstance(store, FakeVectorStore)
     assert len(client.created) == 1  # collection ensured exactly once
-    embeddings = captured_kwargs["embeddings"]
-    assert isinstance(embeddings, qdrant_service.E5LangChainEmbeddings)
-    assert embeddings._service is embedding_service
+    embedding = captured_kwargs["embedding"]
+    assert isinstance(embedding, qdrant_service.E5LangChainEmbeddings)
+    assert embedding._service is embedding_service
     assert captured_kwargs["collection_name"] == "docs_chunks"
+
+
+def test_qdrant_vector_store_accepts_construction_kwargs(tmp_path):
+    """Guard against langchain-qdrant API drift in the kwargs we pass.
+
+    langchain-qdrant >= 0.12 takes ``embedding`` (singular), not ``embeddings``;
+    this fails immediately if the installed package changes the contract again.
+    """
+    import inspect
+
+    from langchain_core.embeddings import Embeddings
+    from langchain_qdrant import QdrantVectorStore
+
+    params = inspect.signature(QdrantVectorStore.__init__).parameters
+
+    assert "embedding" in params
+    assert "embeddings" not in params
+    assert "client" in params
+    assert "collection_name" in params
+
+    # Construct against an offline in-memory Qdrant collection to prove the
+    # exact kwargs — including collection validation — are accepted at runtime.
+    class FakeEmbedding(Embeddings):
+        def embed_query(self, text):
+            return [0.0] * EMBEDDING_DIMENSION
+
+        def embed_documents(self, texts):
+            if texts == ["dummy_text"]:
+                return [[0.0] * EMBEDDING_DIMENSION]
+            return [[0.0] * EMBEDDING_DIMENSION for _ in texts]
+
+    client = QdrantClient(":memory:")  # offline embedded testing mode
+    ensure_collection(client, "docs_chunks", EMBEDDING_DIMENSION)
+    store = QdrantVectorStore(
+        client=client,
+        collection_name="docs_chunks",
+        embedding=FakeEmbedding(),  # type: ignore[arg-type]
+    )
+    assert store.collection_name == "docs_chunks"
+    client.close()

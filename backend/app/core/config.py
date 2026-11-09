@@ -21,7 +21,9 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # .env lives at the repository root, NOT next to the launched process;
+        # this keeps settings identical no matter where commands are run from.
+        env_file=_REPOSITORY_ROOT / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",  # ignore keys for features implemented in later phases
@@ -43,13 +45,10 @@ class Settings(BaseSettings):
     embedding_batch_size: int = 32
 
     # --- Qdrant (Phase 3) ---
-    # "local" uses an embedded on-disk store (no service needed); "server" uses
-    # the Qdrant instance at QDRANT_URL.
-    qdrant_mode: Literal["local", "server"] = "local"
+    # Qdrant Server (Docker Compose: infrastructure/docker/docker-compose.yml).
     qdrant_collection: str = "docs_chunks"
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: str | None = None
-    qdrant_local_path: Path = _REPOSITORY_ROOT / "data" / "qdrant"
 
     # Runtime data root (raw HTML, processed chunks, SQLite registry).
     data_dir: Path = _REPOSITORY_ROOT / "data"

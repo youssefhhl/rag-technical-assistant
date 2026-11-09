@@ -1,8 +1,8 @@
-"""Qdrant collection setup and vector-store construction.
+"""Qdrant Server connection and collection setup.
 
-- Local storage mode (default): embedded QdrantLocal under ``QDRANT_LOCAL_PATH``
-  — no service to run during initial development.
-- Server mode: the instance at ``QDRANT_URL`` (+ optional API key).
+- Connects to the Qdrant Server at ``QDRANT_URL`` (default
+  ``http://localhost:6333``, started via
+  ``infrastructure/docker/docker-compose.yml``) with an optional API key.
 - The collection is created (idempotently) with 384-dim vectors and cosine distance.
 """
 
@@ -23,12 +23,9 @@ logger = logging.getLogger(__name__)
 
 
 def make_client(settings: Settings | None = None) -> QdrantClient:
-    """Create a Qdrant client in the configured mode (local path or server)."""
+    """Connect to the Qdrant Server at the configured URL (+ optional API key)."""
     config = settings or get_settings()
-    if config.qdrant_mode == "server":
-        return QdrantClient(url=config.qdrant_url, api_key=config.qdrant_api_key)
-    config.qdrant_local_path.mkdir(parents=True, exist_ok=True)
-    return QdrantClient(path=str(config.qdrant_local_path))
+    return QdrantClient(url=config.qdrant_url, api_key=config.qdrant_api_key)
 
 
 def ensure_collection(client: QdrantClient, collection_name: str, dimension: int) -> None:
@@ -67,7 +64,9 @@ def build_vector_store(
     return QdrantVectorStore(
         client=client,
         collection_name=config.qdrant_collection,
-        embeddings=embeddings,
+        # langchain-qdrant >= 0.12 renamed the constructor arg to `embedding`
+        # (singular); 1.1.0 still uses it.
+        embedding=embeddings,
     )
 
 
