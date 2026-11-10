@@ -1,5 +1,5 @@
-# Qdrant Server (vector database) — HTTP API / Web UI on 6333, gRPC on 6334.
-# Usage: docker compose -f infrastructure/docker/docker-compose.yml up -d
+# Vector DB + PostgreSQL stack — managed manually:
+#   docker compose -f infrastructure/docker/docker-compose.yml up -d
 services:
   qdrant:
     image: qdrant/qdrant:latest
@@ -8,7 +8,29 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      # Persistent storage in the NEW data/qdrant-server/ directory
+      # Persistent storage in the data/qdrant-server/ directory
       # (relative to this compose file: repo root / data / qdrant-server).
       - ../../data/qdrant-server:/qdrant/storage
+    restart: unless-stopped
+
+  # Conversation history (Phase 6): PostgreSQL 16 + SQLAlchemy backend.
+  postgres:
+    image: postgres:16
+    container_name: skk-assistant-postgres
+    environment:
+      POSTGRES_USER: rag_user
+      POSTGRES_PASSWORD: change-me
+      POSTGRES_DB: rag_assistant
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persistent storage in the data/postgres/ directory
+      # (relative to this compose file: repo root / data / postgres).
+      - ../../data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rag_user -d rag_assistant"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped

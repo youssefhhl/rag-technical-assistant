@@ -7,6 +7,7 @@ intentionally absent here.
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from dataclasses import dataclass
 
@@ -25,6 +26,8 @@ class SearchHit:
     heading_hierarchy: list[str]
     similarity_score: float
     chunk_index: int = 0
+    # Full payload metadata (used by downstream steps, e.g. hybrid fusion).
+    metadata: dict = dataclasses.field(default_factory=dict)
 
     def format(self) -> str:
         hierarchy = " > ".join(self.heading_hierarchy) or self.title
@@ -57,6 +60,7 @@ class SemanticSearchService:
                     heading_hierarchy=list(metadata.get("heading_hierarchy", [])),
                     similarity_score=float(score),
                     chunk_index=int(metadata.get("chunk_index", 0)),
+                    metadata=metadata,
                 )
             )
         return hits

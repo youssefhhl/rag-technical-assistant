@@ -7,7 +7,7 @@ Entrypoints:
 
 from fastapi import FastAPI
 
-from app.api import health_router
+from app.api import health_router, chat_router, conversations_router
 from app.core.config import get_settings
 from app.core.logging import setup_logging
 
@@ -32,6 +32,8 @@ def create_app() -> FastAPI:
 
     # Endpoints are registered here as modules are implemented in later phases.
     application.include_router(health_router)
+    application.include_router(chat_router)
+    application.include_router(conversations_router)
 
     return application
 

@@ -35,6 +35,7 @@ data/pdf_uploads/
 data/indexes/
 data/qdrant/
 data/qdrant-server/
+data/postgres/
 !data/**/.gitkeep
 
 # --- Coverage / reports ---
