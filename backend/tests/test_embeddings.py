@@ -134,3 +134,28 @@ def test_langchain_adapter_uses_passage_and_query_prefixes():
     query_vector = adapter.embed_query("a question")
     assert model.calls[1]["texts"] == ["query: a question"]
     assert len(query_vector) == EMBEDDING_DIMENSION
+
+
+def test_embed_texts_batch_returns_one_vector_per_text():
+    """Regression: batch embedding must return n proper vectors, never a flat list.
+
+    The previous flat pre-allocation (`[0.0] * dim * n`) returned a corrupted
+    sequence (vectors mixed with leftover floats), breaking both the RAGAS
+    answer_relevancy metric and any consumer expecting aligned embeddings.
+    """
+    service = EmbeddingService(model=RecordingModel(), settings=make_settings())
+    vectors = service.embed_texts(["a", "b", "c"])
+    assert len(vectors) == 3
+    assert all(
+        isinstance(vector, list) and len(vector) == EMBEDDING_DIMENSION
+        for vector in vectors
+    )
+
+
+def test_embed_texts_mixed_empty_batch_stays_aligned():
+    service = EmbeddingService(model=RecordingModel(), settings=make_settings())
+    vectors = service.embed_texts(["", "real", ""])
+    assert len(vectors) == 3
+    assert vectors[0] == [0.0] * EMBEDDING_DIMENSION
+    assert isinstance(vectors[1], list) and len(vectors[1]) == EMBEDDING_DIMENSION
+    assert vectors[2] == [0.0] * EMBEDDING_DIMENSION

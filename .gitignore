@@ -40,6 +40,8 @@ data/postgres/
 
 # --- Coverage / reports ---
 evaluation/reports/
+backend/app/evaluation/reports/*
+!backend/app/evaluation/reports/.gitkeep
 
 # --- OS & editor ---
 .DS_Store
