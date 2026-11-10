@@ -65,6 +65,19 @@ class Settings(BaseSettings):
     llm_model: str = "groq/llama-3.3-70b-versatile"
     groq_api_key: str | None = None
 
+    # --- Retrieval reliability (Phase 10) ---
+    # Cross-Encoder score thresholds, calibrated on the real logits of
+    # cross-encoder/ms-marco-MiniLM-L-6-v2 (relevant pairs scored ~+2..+11,
+    # unrelated pairs ~-11..0 on the FastAPI corpus):
+    #   top score >= retrieval_relevant_threshold -> RELEVANT
+    #   top score >= retrieval_partial_threshold  -> PARTIALLY_RELEVANT
+    #   otherwise                                  -> IRRELEVANT
+    retrieval_relevant_threshold: float = 2.0
+    retrieval_partial_threshold: float = -3.0
+    # One corrective retrieval attempt (lightweight CRAG) when the first
+    # retrieval is judged irrelevant.
+    crag_correction_enabled: bool = True
+
     # --- RAGAS evaluation (Phase 9.1) ---
     # Judge model for the evaluation metrics; falls back to llm_model when
     # unset. Uses the same GROQ_API_KEY (Groq OpenAI-compatible endpoint).
