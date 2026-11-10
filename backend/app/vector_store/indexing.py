@@ -15,6 +15,7 @@ pinpointing the file and line; embedding/upsert errors propagate after logging.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import uuid
@@ -71,19 +72,32 @@ def discover_sources(settings: Settings | None = None) -> list[str]:
 # -- stable IDs ----------------------------------------------------------------
 
 
-def stable_point_id(source_url: str, chunk_index: int) -> uuid.UUID:
-    """Deterministic UUIDv5 point ID: identical chunks always map to the same ID."""
+def content_fingerprint(content: str) -> str:
+    """Short fingerprint of the whitespace-normalised chunk text."""
+    normalized = " ".join((content or "").split())
+    return hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:16]
+
+
+def stable_point_id(source_url: str, chunk_index: int, content: str = "") -> uuid.UUID:
+    """Deterministic UUIDv5 point ID: identical chunks always map to the same ID.
+
+    ``chunk_index`` restarts at 0 for every page of a source, so the key must
+    include the content fingerprint — the URL + index pair alone collides on
+    real corpora (data/processed/fastapi: 20 keys for 126 chunks).
+    """
     key = f"{source_url}::chunk::{chunk_index}"
+    if content:
+        key += f"::{content_fingerprint(content)}"
     return uuid.uuid5(uuid.NAMESPACE_URL, key)
 
 
 def chunk_ids(documents: list[Document]) -> list[uuid.UUID]:
-    """Stable IDs for a list of chunk Documents."""
+    """Stable IDs for a list of chunk Documents (unique even for colliding metadata)."""
     ids: list[uuid.UUID] = []
     for document in documents:
         url = str(document.metadata.get("source", "unknown::url"))
         index = int(document.metadata.get("chunk_index", 0))
-        ids.append(stable_point_id(url, index))
+        ids.append(stable_point_id(url, index, document.page_content))
     return ids
 
 
