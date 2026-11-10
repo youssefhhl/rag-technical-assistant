@@ -82,6 +82,25 @@ expose reliable token-usage/pricing without touching production code).
 - No failed sample is ever turned into a fabricated score: failures are
   recorded with their exact errors (`ScoreOutcome` in `evaluator.py`).
 
+## Phase 10 reliability comparison
+
+The Phase 10 reliability layer (retrieval validation, abstention, one
+corrective retrieval, citation verification) can be evaluated with the same
+harness, to compare it with the Phase 9 baseline:
+
+```bash
+# Phase 9 baseline (default)
+uv run python -m app.evaluation.evaluation_runner --limit 5
+
+# Phase 10 pipeline
+uv run python -m app.evaluation.evaluation_runner --limit 5 --reliability
+```
+
+The flag is opt-in: nothing runs automatically and no Groq quota is consumed
+without an explicit command. The Phase 10 report adds two optional fields per
+question (`retrieval_label`, `corrective_used`); without the flag the report
+format is unchanged. See `docs/RELIABILITY.md`.
+
 ## Extending
 
 Questions/references follow a single schema (`answerable: false` marks a

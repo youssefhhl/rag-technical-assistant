@@ -52,6 +52,11 @@ class PipelineRunResult:
     error: str | None = None
     # Only for unanswerable questions: did the pipeline abstain?
     abstained: bool | None = None
+    # Phase 10 reliability layer (only set when it is enabled):
+    # the retrieval label (RELEVANT / PARTIALLY_RELEVANT / IRRELEVANT) and
+    # whether a corrective retrieval attempt was used.
+    retrieval_label: str | None = None
+    corrective_used: bool = False
 
 
 def responses_from_errors(

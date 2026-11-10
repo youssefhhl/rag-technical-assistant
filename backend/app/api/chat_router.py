@@ -24,8 +24,10 @@ from app.retrieval.bm25_search import Bm25SearchService
 from app.retrieval.contextual_search import ContextualSearchService
 from app.retrieval.hybrid_search import HybridSearchService, SearchEngine
 from app.retrieval.query_rewriter import QueryRewriter
-from app.retrieval.rag_service import RAGAnswer, RAGService
+from app.retrieval.rag_service import RAGService
 from app.retrieval.reranker import CrossEncoderReranker
+from app.retrieval.reliability import ReliabilityPipeline
+from app.retrieval.validation import RetrievalValidator
 from app.vector_store.qdrant_service import build_vector_store
 from app.vector_store.search import SemanticSearchService
 
@@ -100,6 +102,27 @@ def get_search_service(
     )
 
 
+def get_reliability_pipeline(
+    search_service: ContextualSearchService = Depends(get_search_service),
+    rag_service: RAGService = Depends(get_rag_service),
+) -> ReliabilityPipeline:
+    """The Phase 10 reliability layer built on the real service wiring.
+
+    It reuses the hybrid service and the query rewriter of the contextual
+    search service (same instances, no duplicated engines) and adds the
+    retrieval validation, the abstention, the corrective attempt and the
+    citation verification.
+    """
+    settings = get_settings()
+    return ReliabilityPipeline(
+        hybrid_service=getattr(search_service, "hybrid_service", None),
+        rewriter=getattr(search_service, "query_rewriter", None),
+        rag_service=rag_service,
+        validator=RetrievalValidator(settings=settings),
+        crag_enabled=settings.crag_correction_enabled,
+    )
+
+
 # -- endpoint ------------------------------------------------------------------
 
 
@@ -119,6 +142,7 @@ def chat(
     repo: ConversationRepository = Depends(get_conversation_repo),
     search_service: ContextualSearchService = Depends(get_search_service),
     rag_service: RAGService = Depends(get_rag_service),
+    reliability_pipeline: ReliabilityPipeline = Depends(get_reliability_pipeline),
 ) -> ChatResponse:
     # append_message handles conversation creation on the fly.
     user_msg = repo.append_message(
@@ -139,19 +163,29 @@ def chat(
         ) from exc
 
     # The retrieved hits already carry the real chunk text and the real
-    # document metadata - hand them to the generator unchanged.
-    rag_answer: RAGAnswer = rag_service.generate(request.message, outcome.hits)
+    # document metadata - hand them to the reliability layer unchanged:
+    # it validates the context, abstains when it is insufficient (after at
+    # most one corrective retrieval) and verifies the citations.
+    try:
+        result = reliability_pipeline.answer(
+            request.message, outcome.hits, top_k=get_settings().reranker_top_k
+        )
+    except Exception as exc:  # noqa: BLE001 - surfaced as a 503, never swallowed
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Answer generation failed: {exc}",
+        ) from exc
 
     # Save the assistant message
     repo.append_message(
         conversation_id=user_msg.conversation_id,
         role="assistant",
-        content=rag_answer.answer,
+        content=result.answer,
     )
 
     # Return response
     return ChatResponse(
         conversation_id=user_msg.conversation_id,
-        answer=rag_answer.answer,
-        citations=rag_answer.citations,
+        answer=result.answer,
+        citations=result.citations,
     )

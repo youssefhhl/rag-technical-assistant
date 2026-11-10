@@ -174,7 +174,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="override the RAGAS evaluator model (LiteLLM-style 'groq/<model>')",
     )
+    parser.add_argument(
+        "--reliability",
+        action="store_true",
+        help=(
+            "run the pipeline through the Phase 10 reliability layer "
+            "(retrieval validation, abstention, corrective retrieval, citation "
+            "verification) instead of the Phase 9 baseline path"
+        ),
+    )
     return parser.parse_args(argv)
+
+
+def build_pipeline(reliability: bool = False) -> ProductionPipeline:
+    """The production pipeline, optionally wrapped by the reliability layer."""
+    if not reliability:
+        return ProductionPipeline()
+    return ProductionPipeline(reliability=True)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -185,11 +201,15 @@ def main(argv: list[str] | None = None) -> int:
         f"Golden dataset: {dataset.name} "
         f"({len(dataset.answerable)} answerable, {len(dataset.unanswerable)} unanswerable)"
     )
+    pipeline = build_pipeline(reliability=args.reliability)
+    if args.reliability:
+        print("Pipeline mode: Phase 10 reliability layer (validation + abstention + CRAG)")
     report = asyncio.run(
         run_evaluation(
             dataset,
             dataset_limit=args.limit,
             evaluator_model=args.model,
+            pipeline=pipeline,
             reports_dir=args.output,
         )
     )
