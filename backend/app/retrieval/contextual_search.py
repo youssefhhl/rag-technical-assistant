@@ -49,6 +49,18 @@ class ContextualSearchService:
         self._hybrid_service = hybrid_service
         self._window = window or repository.default_window
 
+    # -- accessors (used by the Phase 10 reliability layer) -------------------
+
+    @property
+    def hybrid_service(self) -> HybridSearchService:
+        """The hybrid search service (retrieval + reranking)."""
+        return self._hybrid_service
+
+    @property
+    def query_rewriter(self) -> QueryRewriter:
+        """The query rewriter (history rewriting + corrective reformulation)."""
+        return self._query_rewriter
+
     def search(
         self, conversation_id: str, question: str, top_k: int | None = None
     ) -> ContextualOutcome:
