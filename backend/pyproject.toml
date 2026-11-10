@@ -17,6 +17,9 @@ dependencies = [
     "langchain-qdrant>=0.0.4",
     "qdrant-client>=1.9.0",
     "rank-bm25>=0.2.2",
+    "sqlalchemy>=2.1.8",
+    "psycopg[binary]>=3.2",
+    "litellm>=1.108.4",
 ]
 
 [dependency-groups]
@@ -39,6 +42,9 @@ explicit = true
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-q"
+markers = [
+    "integration: requires the live PostgreSQL / Qdrant / BM25 / Groq services",
+]
 filterwarnings = [
     # TestClient deprecation churn between httpx/starlette releases; revisit with next pin bump.
     "ignore::DeprecationWarning",
