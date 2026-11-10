@@ -1,0 +1,244 @@
+{
+  "questions": [
+    {
+      "question": "What is FastAPI?",
+      "reference": "FastAPI is a modern, fast (high-performance) web framework for building APIs with Python, based on standard Python type hints.",
+      "reference_contexts": [
+        "FastAPI is a modern, fast (high-performance), web framework for building APIs with Python based on standard Python type hints."
+      ]
+    },
+    {
+      "question": "What are the key features of FastAPI?",
+      "reference": "Its key features are: very high performance (on par with NodeJS and Go thanks to Starlette and Pydantic), fast to code (about 200% to 300% faster feature development), fewer bugs (about 40% fewer developer errors), intuitive with great editor support, easy to use and learn, short code, robust and production-ready with automatic interactive documentation, and standards-based on OpenAPI and JSON Schema.",
+      "reference_contexts": [
+        "The key features are: Fast: Very high performance, on par with NodeJS and Go (thanks to Starlette and Pydantic). Fast to code: Increase the speed to develop features by about 200% to 300%. Fewer bugs: Reduce about 40% of human (developer) induced errors. Intuitive: Great editor support. Easy: Designed to be easy to use and learn. Short: Minimize code duplication. Robust: Get production-ready code. With automatic interactive documentation. Standards-based: Based on (and fully compatible with) the open standards for APIs: OpenAPI (previously known as Swagger) and JSON Schema."
+      ]
+    },
+    {
+      "question": "Which libraries does FastAPI stand on for the web and data parts?",
+      "reference": "FastAPI stands on the shoulders of giants: Starlette for the web parts and Pydantic for the data parts.",
+      "reference_contexts": [
+        "FastAPI stands on the shoulders of giants: Starlette for the web parts. Pydantic for the data parts."
+      ]
+    },
+    {
+      "question": "How fast is FastAPI compared to other Python frameworks?",
+      "reference": "Independent TechEmpower benchmarks show FastAPI applications running under Uvicorn as one of the fastest Python frameworks available, only below Starlette and Uvicorn themselves (which FastAPI uses internally).",
+      "reference_contexts": [
+        "Independent TechEmpower benchmarks show FastAPI applications running under Uvicorn as one of the fastest Python frameworks available, only below Starlette and Uvicorn themselves (used internally by FastAPI)."
+      ]
+    },
+    {
+      "question": "How do you install FastAPI in a project using uv?",
+      "reference": "Install uv first, then add FastAPI with: uv add \"fastapi[standard]\". The value must be put in quotes so it works in all terminals; with pip you install fastapi[standard] inside a virtual environment.",
+      "reference_contexts": [
+        "First, install uv, and then add FastAPI to your project: $ uv add \"fastapi[standard]\". Note: Make sure you put \"fastapi[standard]\" in quotes to ensure it works in all terminals. If you prefer to use pip, install fastapi[standard] inside a virtual environment."
+      ]
+    },
+    {
+      "question": "How do you create the minimal FastAPI app in main.py?",
+      "reference": "Create main.py, import FastAPI, create an app instance, and declare path operations with decorators: from fastapi import FastAPI; app = FastAPI(); @app.get(\"/\") defining read_root returning {\"Hello\": \"World\"}, and @app.get(\"/items/{item_id}\").",
+      "reference_contexts": [
+        "Create a file main.py with: from fastapi import FastAPI; app = FastAPI(); @app.get(\"/\") def read_root(): return {\"Hello\": \"World\"}; @app.get(\"/items/{item_id}\") def read_item(item_id: int, q: str | None = None): return {\"item_id\": item_id, \"q\": q}"
+      ]
+    },
+    {
+      "question": "What HTTP operation does the /items/{item_id} path handle and what parameters does it take?",
+      "reference": "It takes GET operations, has a path parameter item_id that should be an int, and an optional str query parameter q (declared as q: str | None = None).",
+      "reference_contexts": [
+        "You already created an API that: Receives HTTP requests in the paths / and /items/{item_id}. Both paths take GET operations (also known as HTTP methods). The path /items/{item_id} has a path parameter item_id that should be an int. The path /items/{item_id} has an optional str query parameter q."
+      ]
+    },
+    {
+      "question": "How do you run the example FastAPI app in development mode?",
+      "reference": "Run it with uv run fastapi dev. The FastAPI CLI development mode serves the app at http://127.0.0.1:8000; fastapi dev reads main.py automatically, detects the FastAPI app in it, and starts a server using Uvicorn, with auto-reload enabled by default.",
+      "reference_contexts": [
+        "Run the server with: $ uv run fastapi dev. Serving at: http://127.0.0.1:8000. API docs: http://127.0.0.1:8000/docs. The command fastapi dev reads your main.py file automatically, detects the FastAPI app in it, and starts a server using Uvicorn. By default, fastapi dev will start with auto-reload enabled for local development."
+      ]
+    },
+    {
+      "question": "Where can I browse the automatic interactive API documentation of a FastAPI app?",
+      "reference": "At http://127.0.0.1:8000/docs you get the automatic interactive API documentation provided by Swagger UI; the alternative docs at /redoc are provided by ReDoc.",
+      "reference_contexts": [
+        "Now go to http://127.0.0.1:8000/docs. You will see the automatic interactive API documentation (provided by Swagger UI). And now, go to http://127.0.0.1:8000/redoc. You will see the alternative automatic documentation (provided by ReDoc)."
+      ]
+    },
+    {
+      "question": "What response do you get when you open /items/5?q=somequery in the example app?",
+      "reference": "The JSON response {\"item_id\": 5, \"q\": \"somequery\"}.",
+      "reference_contexts": [
+        "Open your browser at http://127.0.0.1:8000/items/5?q=somequery. You will see the JSON response as: {\"item_id\": 5, \"q\": \"somequery\"}"
+      ]
+    },
+    {
+      "question": "Which open standards is FastAPI based on?",
+      "reference": "FastAPI is based on (and fully compatible with) the open standards for APIs: OpenAPI (previously known as Swagger) and JSON Schema.",
+      "reference_contexts": [
+        "Standards-based: Based on (and fully compatible with) the open standards for APIs: OpenAPI (previously known as Swagger) and JSON Schema."
+      ]
+    },
+    {
+      "question": "How does the FastAPI example use Pydantic to declare a request body for PUT requests?",
+      "reference": "The body is declared with standard Python types via a Pydantic BaseModel: class Item(BaseModel) with name: str, price: float, and is_offer: bool | None = None.",
+      "reference_contexts": [
+        "Now modify the file main.py to receive a body from a PUT request. Declare the body using standard Python types, thanks to Pydantic. from fastapi import FastAPI; from pydantic import BaseModel; app = FastAPI(); class Item(BaseModel): name: str; price: float; is_offer: bool | None = None."
+      ]
+    },
+    {
+      "question": "Once parameter types are declared once, what benefits do you get in FastAPI?",
+      "reference": "Editor support (completion and type checks), automatic data validation with clear errors even for deeply nested JSON, conversion of input and output data between network JSON and Python types, and automatic interactive API documentation with two alternative interfaces (Swagger UI and ReDoc).",
+      "reference_contexts": [
+        "With that single declaration you get: Editor support, including: Completion. Type checks. Validation of data: Automatic and clear errors when the data is invalid. Validation even for deeply nested JSON objects. Conversion of input data: coming from the network to Python data and types. Conversion of output data: converting from Python data and types to network data (as JSON). Automatic interactive API documentation, including 2 alternative user interfaces: Swagger UI. ReDoc."
+      ]
+    },
+    {
+      "question": "What does FastAPI check for the body of a PUT request to /items/{item_id}?",
+      "reference": "It reads the body as JSON and checks it has a required attribute name of type str, a required attribute price of type float, and an optional attribute is_offer that should be a bool if present; this also works for deeply nested JSON objects.",
+      "reference_contexts": [
+        "For PUT requests to /items/{item_id}, read the body as JSON: Check that it has a required attribute name that should be a str. Check that it has a required attribute price that has to be a float. Check that it has an optional attribute is_offer, that should be a bool, if present. All this would also work for deeply nested JSON objects."
+      ]
+    },
+    {
+      "question": "What does FastAPI validate about item_id on GET and PUT requests to /items/{item_id}?",
+      "reference": "FastAPI validates that there is an item_id in the path for GET and PUT requests and that it is of type int; if it is not, the client sees a useful, clear error.",
+      "reference_contexts": [
+        "FastAPI will: Validate that there is an item_id in the path for GET and PUT requests. Validate that the item_id is of type int for GET and PUT requests. If it is not, the client will see a useful, clear error."
+      ]
+    },
+    {
+      "question": "How can I deploy the example FastAPI app to FastAPI Cloud?",
+      "reference": "Optionally deploy to FastAPI Cloud with a single command: uv run fastapi deploy. The CLI detects your FastAPI app and deploys it; if you are not logged in, the browser opens to complete authentication, then the app is available at https://myapp.fastapicloud.dev.",
+      "reference_contexts": [
+        "You can optionally deploy your FastAPI app to FastAPI Cloud with a single command: $ uv run fastapi deploy. Deploying to FastAPI Cloud... Deployment successful! Your app is ready at https://myapp.fastapicloud.dev. The CLI will automatically detect your FastAPI application and deploy it to the cloud. If you are not logged in, your browser will open to complete the authentication process."
+      ]
+    },
+    {
+      "question": "Can a FastAPI app be deployed to cloud providers other than FastAPI Cloud?",
+      "reference": "Yes. FastAPI is open source and based on standards, so you can deploy FastAPI apps to any cloud provider you choose, following that provider's guides.",
+      "reference_contexts": [
+        "Deploy to other cloud providers: FastAPI is open source and based on standards. You can deploy FastAPI apps to any cloud provider you choose. Follow your cloud provider's guides to deploy FastAPI apps with them."
+      ]
+    },
+    {
+      "question": "Who built FastAPI Cloud and what does it provide for the FastAPI project?",
+      "reference": "FastAPI Cloud is built by the same author and team behind FastAPI. It streamlines building, deploying, and accessing an API with minimal effort, and it is the primary sponsor and funding provider for the FastAPI and friends open source projects.",
+      "reference_contexts": [
+        "FastAPI Cloud is built by the same author and team behind FastAPI. It streamlines the process of building, deploying, and accessing an API with minimal effort. FastAPI Cloud is the primary sponsor and funding provider for the FastAPI and friends open source projects."
+      ]
+    },
+    {
+      "question": "What can I use to build a CLI app instead of a web API in the FastAPI ecosystem?",
+      "reference": "Use Typer. Typer is FastAPI's little sibling and it is intended to be the FastAPI of CLIs for terminal applications.",
+      "reference_contexts": [
+        "If you are building a CLI app to be used in the terminal instead of a web API, check out Typer. Typer is FastAPI's little sibling. And it's intended to be the FastAPI of CLIs."
+      ]
+    },
+    {
+      "question": "What is OpenAPI used to generate for a FastAPI application?",
+      "reference": "FastAPI documents everything with OpenAPI, which can be used by interactive documentation systems and by automatic client code generation systems for many languages.",
+      "reference_contexts": [
+        "Document everything with OpenAPI, that can be used by: Interactive documentation systems. Automatic client code generation systems, for many languages."
+      ]
+    },
+    {
+      "question": "Is the query parameter q in the example app required?",
+      "reference": "No. The q parameter is declared with = None, so it is optional. Without the None default it would be required (as is the body in the PUT example).",
+      "reference_contexts": [
+        "Check if there is an optional query parameter named q (as in http://127.0.0.1:8000/items/foo?q=somequery) for GET requests. As the q parameter is declared with = None, it is optional. Without the None it would be required (as is the body in the case with PUT)."
+      ]
+    },
+    {
+      "question": "What kinds of Python data can FastAPI convert to network JSON output?",
+      "reference": "FastAPI converts Python types (str, int, float, bool, list, etc.), datetime objects, UUID objects, and database models to network data (JSON).",
+      "reference_contexts": [
+        "Conversion of output data: converting from Python data and types to network data (as JSON): Convert Python types (str, int, float, bool, list, etc). datetime objects. UUID objects. Database models. ...and many more."
+      ]
+    },
+    {
+      "question": "What server software runs FastAPI applications, and how do they perform in benchmarks?",
+      "reference": "FastAPI applications run under Uvicorn. Independent TechEmpower benchmarks show them as one of the fastest Python frameworks available, only below Starlette and Uvicorn themselves.",
+      "reference_contexts": [
+        "Independent TechEmpower benchmarks show FastAPI applications running under Uvicorn as one of the fastest Python frameworks available, only below Starlette and Uvicorn themselves (used internally by FastAPI)."
+      ]
+    },
+    {
+      "question": "What does FastAPI provide when data received is invalid?",
+      "reference": "Automatic and clear errors when the data is invalid, with validation applying even to deeply nested JSON objects.",
+      "reference_contexts": [
+        "Validation of data: Automatic and clear errors when the data is invalid. Validation even for deeply nested JSON objects."
+      ]
+    },
+    {
+      "question": "By how much does FastAPI claim it can speed up feature development?",
+      "reference": "FastAPI boosts the speed to develop features by about 200% to 300% (an estimation based on tests conducted by an internal development team building production applications).",
+      "reference_contexts": [
+        "Fast to code: Increase the speed to develop features by about 200% to 300%. * estimation based on tests conducted by an internal development team, building production applications."
+      ]
+    },
+    {
+      "question": "Why is FastAPI so fast compared with other frameworks?",
+      "reference": "It has very high performance on par with NodeJS and Go, thanks to Starlette and Pydantic; it is one of the fastest Python frameworks available.",
+      "reference_contexts": [
+        "Fast: Very high performance, on par with NodeJS and Go (thanks to Starlette and Pydantic). One of the fastest Python frameworks available."
+      ]
+    },
+    {
+      "question": "What does FastAPI do in the example when you change the return line to item.name and item.price attributes?",
+      "reference": "The editor auto-completes the attributes and knows their types, because the Pydantic model fields have standard Python types.",
+      "reference_contexts": [
+        "Try changing the line with: return {\"item_name\": item.name, \"item_id\": item_id} ...and see how your editor will auto-complete the attributes and know their types."
+      ]
+    },
+    {
+      "question": "How many alternative user interfaces does FastAPI ship for interactive API documentation, and which are they?",
+      "reference": "Two: Swagger UI and ReDoc.",
+      "reference_contexts": [
+        "Automatic interactive API documentation, including 2 alternative user interfaces: Swagger UI. ReDoc."
+      ]
+    },
+    {
+      "question": "What topics does the FastAPI tutorial user guide say it covers beyond the example?",
+      "reference": "The tutorial user guide covers declaration of parameters from other places (headers, cookies, form fields, files), validation constraints (maximum length, regex), a dependency injection system, security and authentication (OAuth2 with JWT tokens and HTTP Basic auth), deeply nested JSON models, GraphQL integration (with Strawberry and others), and extra Starlette features such as WebSockets, easy tests with HTTPX and pytest, CORS, and Cookie Sessions.",
+      "reference_contexts": [
+        "Try the Tutorial - User Guide. The tutorial - user guide includes: Declaration of parameters from other different places such as: headers, cookies, form fields and files. How to set validation constraints such as maximum_length or regex. A very powerful and easy to use Dependency Injection system. Security and authentication, including support for OAuth2 with JWT tokens and HTTP Basic auth. More advanced (but equally easy) techniques for declaring deeply nested JSON models (thanks to Pydantic). GraphQL integration with Strawberry and other libraries. Many extra features (thanks to Starlette) such as: WebSockets extremely easy tests based on HTTPX and pytest CORS Cookie Sessions ...and more."
+      ]
+    },
+    {
+      "question": "Where can I read or subscribe to the FastAPI newsletter?",
+      "reference": "On the FastAPI and friends website, where you can read previous issues or subscribe to the newsletter.",
+      "reference_contexts": [
+        "FastAPI and friends newsletter: Read previous issues or subscribe on the FastAPI and friends website."
+      ]
+    },
+    {
+      "question": "How do I define custom middleware in FastAPI?",
+      "reference": "",
+      "reference_contexts": [],
+      "answerable": false
+    },
+    {
+      "question": "How does the Depends() dependency injection system work in FastAPI in practice?",
+      "reference": "",
+      "reference_contexts": [],
+      "answerable": false
+    },
+    {
+      "question": "What are the steps to configure OAuth2 password-based JWT authentication in FastAPI?",
+      "reference": "",
+      "reference_contexts": [],
+      "answerable": false
+    },
+    {
+      "question": "How do I create a background task with BackgroundTasks after a response is returned?",
+      "reference": "",
+      "reference_contexts": [],
+      "answerable": false
+    },
+    {
+      "question": "What is the default page size and pagination behavior of the /items endpoint in FastAPI?",
+      "reference": "",
+      "reference_contexts": [],
+      "answerable": false
+    }
+  ]
+}
