@@ -111,6 +111,10 @@ class EmbeddingService:
         """
         prefix = _QUERY_PREFIX if for_query else _PASSAGE_PREFIX
 
+        # Materialize once (the type is Iterable; enumerate + a comprehension
+        # would otherwise consume it twice).
+        texts = list(texts)
+
         # Separate empty/whitespace-only texts (zero vectors, no model call)
         # from non-empty texts (will be prefixed and embedded).
         empty_indices: list[int] = []
@@ -124,7 +128,13 @@ class EmbeddingService:
                 nonempty_texts.append(prefix + text.strip())
                 nonempty_original_indices.append(i)
 
-        results: list[list[float]] = [0.0] * EMBEDDING_DIMENSION * len(texts)
+        # One zero vector per input element (NOT a flat list of floats):
+        # results[i] is always a proper vector, replaced by the real
+        # embedding below. The previous flat pre-allocation corrupted every
+        # multi-text batch (n vectors + leftovers mixed in one list).
+        results: list[list[float]] = [
+            [0.0] * EMBEDDING_DIMENSION for _ in texts
+        ]
 
         # Fill zero vectors for empty texts (already set)
         for idx in empty_indices:
