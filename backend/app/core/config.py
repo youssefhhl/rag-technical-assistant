@@ -65,6 +65,12 @@ class Settings(BaseSettings):
     llm_model: str = "groq/llama-3.3-70b-versatile"
     groq_api_key: str | None = None
 
+    # --- RAGAS evaluation (Phase 9.1) ---
+    # Judge model for the evaluation metrics; falls back to llm_model when
+    # unset. Uses the same GROQ_API_KEY (Groq OpenAI-compatible endpoint).
+    evaluator_model: str | None = None
+    evaluator_temperature: float = 0.0
+
     # Runtime data root (raw HTML, processed chunks, SQLite registry).
     data_dir: Path = _REPOSITORY_ROOT / "data"
 
