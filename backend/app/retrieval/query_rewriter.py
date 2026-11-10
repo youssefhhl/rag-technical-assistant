@@ -32,6 +32,16 @@ _SYSTEM_PROMPT = (
     "already makes sense standalone, output it unchanged."
 )
 
+_CORRECTION_PROMPT = (
+    "The first retrieval attempt for a question returned no useful document. "
+    "Reformulate that question as an alternative standalone search query: keep "
+    "exactly the same subject and the same information need, but use different "
+    "or broader wording (synonyms, related terms, the official name of the "
+    "technology or topic involved). Never change the subject of the question, "
+    "never answer it. Output ONLY the reformulated query, with no explanation, "
+    "no quotes, no extra words."
+)
+
 
 class HistoryMessage(Protocol):
     """Duck-typed message: ``role`` + ``content`` (ORM Message fits)."""
@@ -90,6 +100,47 @@ class QueryRewriter:
         rewritten = (rewritten or "").strip()
         if not rewritten:
             logger.info("Query rewriting returned nothing - keeping original question")
+            return question
+        return rewritten
+
+    # -- corrective reformulation -----------------------------------------------
+
+    def build_correction_messages(self, question: str) -> list[dict[str, str]]:
+        """Chat messages asking for an alternative phrasing of ``question``."""
+        return [
+            {"role": "system", "content": _CORRECTION_PROMPT},
+            {
+                "role": "user",
+                "content": (
+                    "Reformulate this question as an alternative search query:\n"
+                    f"{question.strip()}"
+                ),
+            },
+        ]
+
+    def reformulate(self, question: str) -> str:
+        """Return an alternative search query for a corrective retrieval.
+
+        Used by the lightweight CRAG flow (Phase 10) when the first retrieval
+        was judged irrelevant: the same information need is expressed with
+        different wording so the hybrid search can match other documents.
+
+        Falls back to ``question`` on any LLM failure or empty answer - the
+        caller then skips the corrective search instead of repeating it.
+        """
+        if not question.strip():
+            return ""
+
+        messages = self.build_correction_messages(question)
+        try:
+            rewritten = (self._completion or self._call_llm)(messages)
+        except Exception as exc:  # noqa: BLE001 - any LLM/network error is a fallback
+            logger.warning("Query reformulation failed (%s) - keeping original question", exc)
+            return question
+
+        rewritten = (rewritten or "").strip()
+        if not rewritten:
+            logger.info("Query reformulation returned nothing - keeping original question")
             return question
         return rewritten
 
