@@ -95,6 +95,12 @@ class ReportBuilder:
                 ):
                     self.metric_errors.setdefault(name, []).append(row["question"])
         row["reference"] = reference
+        # Phase 10 reliability layer (absent when it is disabled, so the
+        # Phase 9 report format stays unchanged).
+        if result.retrieval_label is not None:
+            row["retrieval_label"] = result.retrieval_label
+        if result.corrective_used:
+            row["corrective_used"] = True
         self.per_question.append(row)
 
     # -- aggregation ------------------------------------------------------------

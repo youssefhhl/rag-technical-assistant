@@ -30,6 +30,8 @@ from typing import Any
 from app.api.chat_router import get_conversation_repo, get_search_service
 from app.core.config import get_settings
 from app.retrieval.rag_service import RAGAnswer, RAGService
+from app.retrieval.reliability import ReliabilityPipeline
+from app.retrieval.validation import RetrievalValidator
 from app.evaluation.dataset import ABSTENTION_PLACEHOLDER
 from app.evaluation.samples import PipelineRunResult
 
@@ -39,7 +41,7 @@ logger = logging.getLogger(__name__)
 class ProductionPipeline:
     """Thin wrapper around the real chat pipeline, read-only for the database."""
 
-    def __init__(self) -> None:
+    def __init__(self, reliability: bool = False) -> None:
         settings = get_settings()
         self._repo = get_conversation_repo()
         self._search_service = get_search_service(self._repo)
@@ -51,6 +53,18 @@ class ProductionPipeline:
         # recent_messages() always returns [] -> no user history pollution.
         self._conversation_id = f"evaluation-{uuid.uuid4()}"
         self._top_k = settings.reranker_top_k
+        # Phase 10: optional reliability layer (validation + abstention +
+        # corrective retrieval + citation verification). Disabled -> the Phase 9
+        # baseline path, so both runs stay comparable.
+        self._reliability: Any | None = None
+        if reliability:
+            self._reliability = ReliabilityPipeline(
+                hybrid_service=getattr(self._search_service, "hybrid_service", None),
+                rewriter=getattr(self._search_service, "query_rewriter", None),
+                rag_service=self._rag_service,
+                validator=RetrievalValidator(settings=settings),
+                crag_enabled=settings.crag_correction_enabled,
+            )
 
     def run_question(self, question: str) -> PipelineRunResult:
         """Full production path for one question, with latency capture."""
@@ -60,7 +74,19 @@ class ProductionPipeline:
                 self._conversation_id, question, top_k=self._top_k
             )
             hits: list[Any] = outcome.hits
-            rag_answer: RAGAnswer = self._rag_service.generate(question, hits)
+            retrieval_label: str | None = None
+            corrective_used = False
+            if self._reliability is not None:
+                result = self._reliability.answer(question, hits, top_k=self._top_k)
+                response = result.answer.strip()
+                retrieval_label = result.label.value
+                corrective_used = result.corrected
+                # The context actually used (the corrected one after a
+                # corrective retrieval) - never the discarded first result.
+                hits = list(result.hits or hits)
+            else:
+                rag_answer: RAGAnswer = self._rag_service.generate(question, hits)
+                response = rag_answer.answer.strip()
         except Exception as exc:  # noqa: BLE001 - recorded, never faked
             latency = time.perf_counter() - started
             logger.error("Pipeline failed for %r: %s", question, exc)
@@ -71,12 +97,13 @@ class ProductionPipeline:
                 error=f"{type(exc).__name__}: {exc}",
             )
         latency = time.perf_counter() - started
-        response = rag_answer.answer.strip()
         return PipelineRunResult(
             question=question,
             response=response,
             retrieved_contexts=[str(hit.content) for hit in hits],
             latency_seconds=latency,
+            retrieval_label=retrieval_label,
+            corrective_used=corrective_used,
         )
 
 
