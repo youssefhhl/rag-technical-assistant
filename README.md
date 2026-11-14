@@ -1,150 +1,173 @@
 # Smart Knowledge Assistant
 
-An advanced Retrieval-Augmented Generation (RAG) chatbot for developers. It ingests official
-technical documentation (FastAPI, Qdrant, Docker Compose, React, PostgreSQL), stores it in a
-vector database, and answers developer questions with an LLM. Every answer is **grounded in
-retrieved documentation** and includes **source citations**. Manually uploaded PDF documents
-are supported as an additional ingestion source.
+A Retrieval-Augmented Generation (RAG) assistant that answers developer questions from
+official technical documentation and cites the exact sections it used.
 
-> **Status:** Planning / foundation phase. Implementation has not started — see
-> [docs/ROADMAP.md](docs/ROADMAP.md) for the phased plan.
+![Chat interface showing a question about FastAPI path parameters, the answer with a code example, and the cited documentation sections](docs/images/chat-screenshot.png)
 
-## How It Works
+## Highlights
 
-The application is built around two pipelines (full detail in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)):
+- **Controlled documentation scraper:** httpx + BeautifulSoup, robots.txt-aware, with
+  domain allowlists, page/depth limits and rate limiting. Re-runs are idempotent thanks to a
+  content-hash registry.
+- **Structure-aware chunking:** every chunk keeps its heading path
+  (`FastAPI > Tutorial > Path Parameters`), so context survives splitting.
+- **Hybrid retrieval:** dense search in Qdrant (`multilingual-e5-small`) plus BM25 keyword
+  search, merged with Reciprocal Rank Fusion.
+- **Cross-encoder reranking:** the 10 fused candidates are rescored by
+  `ms-marco-MiniLM-L-6-v2`, and the best 5 become the LLM context.
+- **Reliability layer:**
+  - retrieval validation from cross-encoder scores;
+  - one corrective search on weak results (lightweight CRAG);
+  - abstention instead of hallucination;
+  - citation verification against the retrieved chunks.
+- **Conversation memory:** PostgreSQL history, with follow-up questions rewritten into
+  standalone queries by the LLM.
+- **Evaluation:** RAGAS (faithfulness, answer relevancy, context precision and recall) on a
+  35-question golden dataset that includes unanswerable probes.
+- **Tests:** 350+ Pytest tests. The LLM, vector store and models are mocked, so the suite
+  runs offline.
 
-**A. Document Ingestion Pipeline**
+## Architecture
 
+```mermaid
+flowchart LR
+    subgraph Ingestion
+        A[Official docs] --> B[Controlled scraper]
+        B --> C[Parse & clean]
+        C --> D[Heading-aware chunks]
+        D --> E[(Qdrant<br/>E5 vectors)]
+        D --> F[(BM25 index)]
+    end
+
+    subgraph Query
+        U[React chat] --> API[FastAPI /api/v1/chat]
+        API --> RW[Query rewriting<br/>from history]
+        RW --> E & F
+        E & F --> RRF[RRF fusion]
+        RRF --> CE[Cross-encoder rerank]
+        CE --> V{Context<br/>relevant?}
+        V -- no --> CR[One corrective<br/>search]
+        CR --> V2{Relevant now?}
+        V2 -- no --> AB[Abstain]
+        V -- yes --> LLM[LLM via LiteLLM / Groq]
+        V2 -- yes --> LLM
+        LLM --> CV[Verify citations]
+        CV --> U
+    end
+
+    API <--> PG[(PostgreSQL<br/>conversations)]
 ```
-Official doc sites → Custom controlled scraper (httpx + BeautifulSoup) → Raw HTML storage
-→ Parsing & cleaning → LangChain Documents → Text Splitting → Chunks
-→ HF Embeddings (multilingual-e5-small) → Qdrant indexing
-```
 
-**B. RAG Query Pipeline**
-
-```
-React chat → FastAPI → LangChain → Hybrid Retrieval (BM25 + Vector) → RRF
-→ Cross-Encoder Reranking → Context → LLM (LiteLLM / Groq) → Answer + Citations
-```
-
-## Technology Stack
-
-| Concern | Technology |
+| Retrieval step | Configuration |
 | --- | --- |
-| Backend | Python 3.12, FastAPI, Pydantic |
-| Ingestion | httpx, BeautifulSoup, custom controlled scraper, LangChain Documents + Text Splitters |
-| RAG framework | LangChain, LangGraph (advanced workflows, e.g. Corrective RAG) |
-| Embeddings | Hugging Face / Sentence Transformers — `intfloat/multilingual-e5-small` |
-| Vector database | Qdrant + LangChain Qdrant integration |
-| Relational database | PostgreSQL + SQLAlchemy |
-| Retrieval | Semantic search, BM25, hybrid search, RRF, cross-encoder reranking |
-| LLM integration | LiteLLM (initial provider: Groq) |
-| Evaluation / LLMOps | RAGAS, Promptfoo, Langfuse |
-| Frontend | React + TypeScript |
-| DevOps | Docker, Docker Compose, Git, GitHub Actions, Pytest |
+| Dense search | Qdrant, cosine, 384-dim E5 vectors with `query:` / `passage:` prefixes, top 20 |
+| Sparse search | `rank_bm25` BM25Okapi, top 20 |
+| Fusion | RRF, k = 60, top 10 |
+| Reranking | Cross-encoder, final top 5 |
+| Validation | top score ≥ 2.0 relevant, ≥ −3.0 partial, below that irrelevant (calibrated on real logits) |
 
-Decisions and their rationale are documented in
-[docs/TECHNICAL_DECISIONS.md](docs/TECHNICAL_DECISIONS.md). No stack changes are made
-without explicit agreement.
+More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
+[docs/RELIABILITY.md](docs/RELIABILITY.md) and [docs/EVALUATION.md](docs/EVALUATION.md).
 
-## Repository Layout
+## Tech stack
 
-```
-rag-assistant/
-├── backend/            # FastAPI application (ingestion, RAG, API)
-│   └── app/            # Organized by module responsibility (see below)
-├── frontend/           # React + TypeScript chat interface (scaffolded in Phase 1)
-├── docs/               # Architecture, roadmap, technical decisions
-├── data/               # Runtime artifacts (not committed)
-│   ├── raw/            # Raw HTML captured by the scraper
-│   ├── processed/      # Cleaned / parsed documents
-│   ├── pdf_uploads/    # User-uploaded PDFs
-│   └── indexes/        # Persisted BM25 index
-├── evaluation/         # RAGAS/Promptfoo artifacts
-│   ├── datasets/       # Golden evaluation dataset
-│   └── promptfoo/      # Promptfoo configs and prompts
-└── infrastructure/     # Docker images and Docker Compose setup
-    └── docker/
-```
-
-Backend modules (`backend/app/`):
-
-| Module | Responsibility |
+| Area | Technology |
 | --- | --- |
-| `api/` | FastAPI routers, request/response schemas (chat, documents, health) |
-| `core/` | Configuration, settings, logging |
-| `database/` | SQLAlchemy models & sessions (conversations, messages, metadata) |
-| `ingestion/` | Controlled scraper, HTML parsing/cleaning, PDF loading, splitting, dedup |
-| `embeddings/` | Hugging Face sentence-transformers model wrapper |
-| `vector_store/` | Qdrant client, collection management, indexing |
-| `retrieval/` | Vector search, BM25, hybrid search + RRF, reranking, query rewriting |
-| `rag/` | LLM via LiteLLM, prompt templates, LangGraph workflows (CRAG), citations |
-| `evaluation/` | RAGAS / Promptfoo integration, quality and latency metrics |
+| Backend | Python 3.12, FastAPI, Pydantic Settings, uv |
+| Ingestion | httpx, BeautifulSoup, LangChain Documents + text splitters |
+| Embeddings | Sentence Transformers, `intfloat/multilingual-e5-small` |
+| Retrieval | Qdrant, rank-bm25, RRF, cross-encoder reranking |
+| LLM | LiteLLM (Groq) |
+| Storage | PostgreSQL + SQLAlchemy |
+| Evaluation | RAGAS |
+| Frontend | React 19, TypeScript, Vite |
+| Infrastructure | Docker Compose (Qdrant, PostgreSQL), Pytest |
 
-## Documentation
+## Evaluation
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — pipelines, data stores, module responsibilities
-- [docs/ROADMAP.md](docs/ROADMAP.md) — 9-phase implementation plan with exit criteria
-- [docs/TECHNICAL_DECISIONS.md](docs/TECHNICAL_DECISIONS.md) — confirmed stack, rationale, open questions
+The latest RAGAS run (5-question smoke run, judge `qwen/qwen3.8-27b`):
 
-## Backend Quickstart (Phase 1 — implemented)
-
-The FastAPI backend lives in [`backend/`](backend/) and uses **Python 3.12 + uv**.
+| Faithfulness | Answer relevancy | Context precision | Context recall |
+| --- | --- | --- | --- |
+| 0.73 | 0.74 | 0.96 | 0.80 |
 
 ```bash
 cd backend
+uv run python -m app.evaluation.evaluation_runner --limit 5                # baseline
+uv run python -m app.evaluation.evaluation_runner --limit 5 --reliability  # with the reliability layer
+```
 
-# Install dependencies (creates .venv and uv.lock, installs the app editable)
+## Getting started
+
+Requirements: Python 3.12 with [uv](https://docs.astral.sh/uv/), Node 20+, Docker, and a
+Groq API key.
+
+```bash
+# 1. Configuration
+cp .env.example .env          # set GROQ_API_KEY
+
+# 2. Qdrant + PostgreSQL
+docker compose -f infrastructure/docker/docker-compose.yml up -d
+
+# 3. Backend dependencies and tests
+cd backend
 uv sync
-
-# Run the tests (currently: app factory, configuration, /health endpoint)
 uv run pytest
 
-# Start the API (from the backend/ directory)
+# 4. Ingest and index a documentation source
+uv run python -m app.ingestion.cli --source fastapi --max-pages 20
+uv run python -m app.vector_store.cli index --all
+uv run python -c "from app.retrieval.bm25_indexing import build_bm25_index; build_bm25_index()"
+
+# 5. Start the API (http://127.0.0.1:8000/docs)
 uv run uvicorn app.main:app --reload
 ```
 
-Then open:
-
-- Health check: <http://127.0.0.1:8000/health>
-- Interactive docs: <http://127.0.0.1:8000/docs>
-
-Configuration is loaded from environment variables (optionally from a `.env` file) via
-Pydantic Settings — keys and defaults are documented in [`.env.example`](.env.example).
-Useful keys today: `APP_ENV` (`development` | `staging` | `production`), `LOG_LEVEL`.
-
-## Document Ingestion (Phase 2 — implemented)
-
-A controlled scraper ingests official documentation sites into chunked LangChain
-Documents, ready for the embedding phase (Phase 3).
+In a second terminal, start the frontend:
 
 ```bash
-cd backend
-
-# List the five configured sources (fastapi, qdrant, docker-compose, react, postgresql)
-uv run python -m app.ingestion.cli --list
-
-# Ingest a source (limits controlled by SCRAPE_* settings in .env / .env.example)
-uv run python -m app.ingestion.cli --source fastapi
-# Per-run overrides:
-uv run python -m app.ingestion.cli --source fastapi --max-pages 5 --depth 1 --delay 0.5
+cd frontend
+npm install
+npm run dev                   # http://localhost:5173 (proxies /api to :8000)
 ```
 
-Outputs:
+Open `http://localhost:5173/?demo` to see the sample conversation from the screenshot
+without running the backend.
 
-- Raw HTML + fetch metadata sidecars: `data/raw/<source>/`
-- Chunks (JSONL, one JSON object per line with `page_content` + `metadata`):
-  `data/processed/<source>/chunks.jsonl`
-- Deduplication registry: `data/processed/ingestion_registry.sqlite3` — pages already
-  ingested are skipped, so re-running a source is idempotent.
+## API
 
-The scraper respects `robots.txt` (graceful fallback if unreachable), crawls only the
-configured domain/path prefixes, and enforces max pages / depth / delay. Chunking uses a
-single `RecursiveCharacterTextSplitter` (1000 chars / 150 overlap; separators `\n\n`,
-`\n`, `. `, `' '`); each section Document carries its heading hierarchy
-(`heading_hierarchy`) which is also prefixed into the chunk text.
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/health` | Liveness probe |
+| `POST` | `/api/v1/chat` | `{ "message", "conversation_id"? }` → `{ conversation_id, answer, citations[] }` |
+| `GET` | `/api/v1/conversations/{id}` | Conversation messages |
 
-> The full stack (frontend, PostgreSQL, Qdrant, Docker Compose) is implemented in later
-> phases — see [docs/ROADMAP.md](docs/ROADMAP.md).
+## Project structure
+
+```
+rag-assistant/
+├── backend/app/
+│   ├── api/            # FastAPI routers and schemas
+│   ├── core/           # Settings and logging
+│   ├── database/       # SQLAlchemy models and conversation repository
+│   ├── ingestion/      # Scraper, parser, chunking, deduplication, CLI
+│   ├── embeddings/     # E5 embedding service
+│   ├── vector_store/   # Qdrant collection, indexing, semantic search
+│   ├── retrieval/      # BM25, hybrid + RRF, reranker, rewriting, reliability, generation
+│   └── evaluation/     # RAGAS runner, golden dataset, reports
+├── backend/tests/      # Pytest suite
+├── frontend/           # React + TypeScript chat UI
+├── infrastructure/     # Docker Compose
+└── docs/               # Architecture, reliability, evaluation, decisions
+```
+
+## Roadmap
+
+- Index the other configured sources (Qdrant, Docker Compose, React, PostgreSQL docs)
+- Streaming responses (SSE)
+- PDF upload as an additional source
+- Conversation list and deletion in the API and UI
+- Observability with Langfuse, CI with GitHub Actions
+
+Design decisions and their rationale: [docs/TECHNICAL_DECISIONS.md](docs/TECHNICAL_DECISIONS.md).
