@@ -1,11 +1,23 @@
 # Frontend
 
-React + TypeScript chat interface for the Smart Knowledge Assistant.
+React + TypeScript (Vite) chat interface for the Smart Knowledge Assistant.
 
-**Status: not scaffolded yet.** The Vite-based React/TypeScript app will be generated in
-**Phase 1 (Project Foundation)** and the chat experience built in **Phase 7** — see
-[../docs/ROADMAP.md](../docs/ROADMAP.md) and the confirmed stack in
-[../docs/TECHNICAL_DECISIONS.md](../docs/TECHNICAL_DECISIONS.md).
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # type check + production build into dist/
+```
 
-Planned features (Phase 7): conversation history, streaming responses, PDF upload,
-clickable source citations.
+The dev server proxies `/api` to the FastAPI backend at `http://localhost:8000`
+(override with `VITE_API_BASE_URL`). The UI calls `POST /api/v1/chat`, keeps the returned
+`conversation_id` for follow-up questions and shows the cited sources under each answer.
+
+Open `/?demo` to render a sample conversation without the backend. The README screenshot
+was taken in this mode.
+
+| File | Role |
+| --- | --- |
+| `src/App.tsx` | Chat layout, message list, citations, composer |
+| `src/api.ts` | Typed client for the chat endpoint |
+| `src/demo.ts` | Sample conversation used by `?demo` |
+| `src/styles.css` | Dark theme |
