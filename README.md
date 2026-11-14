@@ -84,20 +84,6 @@ More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
 | Frontend | React 19, TypeScript, Vite |
 | Infrastructure | Docker Compose (Qdrant, PostgreSQL), Pytest |
 
-## Evaluation
-
-The latest RAGAS run (5-question smoke run, judge `qwen/qwen3.8-27b`):
-
-| Faithfulness | Answer relevancy | Context precision | Context recall |
-| --- | --- | --- | --- |
-| 0.73 | 0.74 | 0.96 | 0.80 |
-
-```bash
-cd backend
-uv run python -m app.evaluation.evaluation_runner --limit 5                # baseline
-uv run python -m app.evaluation.evaluation_runner --limit 5 --reliability  # with the reliability layer
-```
-
 ## Getting started
 
 Requirements: Python 3.12 with [uv](https://docs.astral.sh/uv/), Node 20+, Docker, and a
